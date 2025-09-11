@@ -267,19 +267,29 @@ def test_smtp_full_block_with_nested_optionals():
     assert "gitlab_rails['smtp_ca_path'] = '/etc/ssl/certs'" in out
     assert "gitlab_rails['smtp_ca_file'] = '/etc/ssl/cert.pem'" in out
 
-
-def test_two_way_ssl_client_auth_blocks():
+@pytest.mark.parametrize(
+    "ssl_verify_enabled",
+    [
+        (True),
+        (False),
+    ],
+)
+def test_two_way_ssl_client_auth_blocks(ssl_verify_enabled):
     ctx = _base_ctx()
-    ctx.update(
-        {
-            "gitlab_nginx_ssl_verify_client": "on",
-            "gitlab_nginx_ssl_client_certificate": "/etc/gitlab/ssl/client-ca.pem",
-        }
-    )
+    if ssl_verify_enabled:
+        ctx.update(
+            {
+                "gitlab_nginx_ssl_verify_client": "on",
+                "gitlab_nginx_ssl_client_certificate": "/etc/gitlab/ssl/client-ca.pem",
+            }
+        )
     out = render(**ctx)
-    assert "nginx['ssl_verify_client'] = \"on\"" in out
-    assert "nginx['ssl_client_certificate'] = \"/etc/gitlab/ssl/client-ca.pem\"" in out
-
+    if ssl_verify_enabled:
+        assert "nginx['ssl_verify_client'] = \"on\"" in out
+        assert "nginx['ssl_client_certificate'] = \"/etc/gitlab/ssl/client-ca.pem\"" in out
+    else:
+        assert "nginx['ssl_verify_client']" not in out
+        assert "nginx['ssl_client_certificate']" not in out
 
 def test_registry_blocks_when_enabled():
     ctx = _base_ctx()
