@@ -78,35 +78,35 @@ def render(**ctx) -> str:
 def _base_ctx():
     return {
         "gitlab_external_url": "https://gitlab.example.com",
-        "gitlab_backup_path": "/var/opt/gitlab/backups",
-        "gitlab_backup_keep_time": 604800,
-        "gitlab_email_enabled": False,
-        "gitlab_redirect_http_to_https": False,
-        "gitlab_letsencrypt_enable": False,
-        "gitlab_git_data_dir": "/var/opt/gitlab/git-data",
         "gitlab_version": "17.10.0",
-        "gitlab_registry_enable": False,
-        "gitlab_pages_external_url": "https://pages.example.com",
-        "gitlab_smtp_enable": False,
-        "gitlab_ldap_enabled": False,
-        "gitlab_extra_settings": [
-            {"gitlab_rails": [{"key": "trusted_proxies", "value": "bar"}]}
-        ]
     }
 
 
 def test_external_url_and_basic_settings_present():
     out = render(**_base_ctx())
     assert 'external_url "https://gitlab.example.com"' in out
-    assert "gitlab_rails['backup_path'] = \"/var/opt/gitlab/backups\"" in out
-    assert "gitlab_rails['backup_keep_time'] = 604800" in out
-    # email disabled lower-cased boolean
-    assert "gitlab_rails['gitlab_email_enabled'] = false" in out
-    # registry enable lower-cased boolean default
-    assert "registry['enable'] = false" in out
-    # pages external url always present
-    assert 'pages_external_url "https://pages.example.com"' in out
 
+@pytest.mark.parametrize(
+    "backup_defined",
+    [
+        (True),
+        (False),
+    ],
+)
+def test_backup(backup_defined):
+    ctx = _base_ctx()
+    if backup_defined:
+      ctx["gitlab_backup_path"] = "/var/opt/gitlab/backups"
+      ctx["gitlab_backup_keep_time"] = 604800
+
+    out = render(**ctx)
+
+    if backup_defined:
+      assert "gitlab_rails['backup_path'] = '/var/opt/gitlab/backups'" in out
+      assert "gitlab_rails['backup_keep_time'] = 604800" in out
+    else:
+      assert "gitlab_rails['backup_path'] = '/var/opt/gitlab/backups'" not in out
+      assert "gitlab_rails['backup_keep_time'] = 604800" not in out
 
 @pytest.mark.parametrize(
     "tz_defined",
@@ -124,6 +124,7 @@ def test_time_zone_block_guards(tz_defined):
         assert "gitlab_rails['time_zone'] = \"UTC\"" in out
     else:
         assert "gitlab_rails['time_zone']" not in out
+
 @pytest.mark.parametrize(
     "theme_expected",
     [
@@ -137,23 +138,52 @@ def test_default_theme_block_guards(theme_expected):
         ctx["gitlab_default_theme"] = 2
     out = render(**ctx)
     if theme_expected:
-        assert "gitlab_rails['gitlab_default_theme'] = \"2\"" in out
+        assert "gitlab_rails['gitlab_default_theme'] = \'2\'" in out
     else:
         assert "gitlab_rails['gitlab_default_theme']" not in out
 
-def test_ssl_redirect_and_cert_blocks_when_flags_set():
+@pytest.mark.parametrize(
+    "redirect",
+    [
+        (True),
+        (False),
+    ],
+)
+def test_ssl_redirect(redirect):
     ctx = _base_ctx()
-    ctx.update(
-        {
-            "gitlab_redirect_http_to_https": True,
-            "gitlab_ssl_certificate": "/etc/gitlab/ssl/fullchain.pem",
-            "gitlab_ssl_certificate_key": "/etc/gitlab/ssl/privkey.pem",
-        }
-    )
+
+    if redirect:
+      ctx["gitlab_redirect_http_to_https"] = True
+        
     out = render(**ctx)
-    assert "nginx['redirect_http_to_https'] = true" in out
-    assert "nginx['ssl_certificate'] = \"/etc/gitlab/ssl/fullchain.pem\"" in out
-    assert "nginx['ssl_certificate_key'] = \"/etc/gitlab/ssl/privkey.pem\"" in out
+    if redirect:
+      assert "nginx['redirect_http_to_https'] = true" in out
+    else:
+      assert "nginx['redirect_http_to_https']" not in out
+
+@pytest.mark.parametrize(
+    "certificate",
+    [
+        (True),
+        (False),
+    ],
+)
+def test_ssl_cert_blocks(certificate):
+    ctx = _base_ctx()
+    if certificate:
+        ctx.update(
+            {
+                "gitlab_ssl_certificate": "/etc/gitlab/ssl/fullchain.pem",
+                "gitlab_ssl_certificate_key": "/etc/gitlab/ssl/privkey.pem",
+            }
+        )
+    out = render(**ctx)
+    if certificate:
+      assert "nginx['ssl_certificate'] = \"/etc/gitlab/ssl/fullchain.pem\"" in out
+      assert "nginx['ssl_certificate_key'] = \"/etc/gitlab/ssl/privkey.pem\"" in out
+    else:
+      assert "nginx['ssl_certificate']" not in out
+      assert "nginx['ssl_certificate_key']" not in out
 
 
 def test_letsencrypt_block_with_list_and_booleans_and_strings():
@@ -191,6 +221,7 @@ def test_letsencrypt_block_with_list_and_booleans_and_strings():
 def test_git_data_dirs_vs_gitaly_configuration_switch(version, expect_legacy):
     ctx = _base_ctx()
     ctx["gitlab_version"] = version
+    ctx["gitlab_git_data_dir"] = "/var/opt/gitlab/git-data"
     out = render(**ctx)
     if expect_legacy:
         assert (
@@ -217,9 +248,9 @@ def test_email_block_present_only_when_enabled_and_values_quoted():
     )
     out = render(**ctx)
     assert "gitlab_rails['gitlab_email_enabled'] = true" in out
-    assert "gitlab_rails['gitlab_email_from'] = \"gitlab@ex.com\"" in out
-    assert "gitlab_rails['gitlab_email_display_name'] = \"GL\"" in out
-    assert "gitlab_rails['gitlab_email_reply_to'] = \"noreply@ex.com\"" in out
+    assert "gitlab_rails['gitlab_email_from'] = 'gitlab@ex.com'" in out
+    assert "gitlab_rails['gitlab_email_display_name'] = 'GL'" in out
+    assert "gitlab_rails['gitlab_email_reply_to'] = 'noreply@ex.com'" in out
 
 
 def test_nginx_listen_port_and_https_defined_guards():
@@ -239,6 +270,8 @@ def test_smtp_full_block_with_nested_optionals():
     ctx = _base_ctx()
     ctx.update(
         {
+            "gitlab_email_enabled": True,
+            "gitlab_email_from": "info@ex.com",
             "gitlab_smtp_enable": True,
             "gitlab_smtp_address": "smtp.ex.com",
             "gitlab_smtp_port": 587,
@@ -255,6 +288,7 @@ def test_smtp_full_block_with_nested_optionals():
     )
     out = render(**ctx)
     assert "gitlab_rails['smtp_enable'] = true" in out
+    assert "gitlab_rails['gitlab_email_from'] = 'info@ex.com'" in out
     assert "gitlab_rails['smtp_address'] = 'smtp.ex.com'" in out
     assert "gitlab_rails['smtp_port'] = 587" in out
     assert "gitlab_rails['smtp_user_name'] = 'user'" in out
