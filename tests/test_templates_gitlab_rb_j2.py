@@ -341,6 +341,22 @@ def test_registry_blocks_when_enabled():
     assert "registry_nginx['ssl_certificate'] = \"/etc/ssl/reg.crt\"" in out
     assert "registry_nginx['ssl_certificate_key'] = \"/etc/ssl/reg.key\"" in out
 
+@pytest.mark.parametrize(
+    "pages_defined",
+    [
+        (True),
+        (False),
+    ],
+)
+def test_pages_blocks(pages_defined):
+    ctx = _base_ctx()
+    if pages_defined:
+        ctx["gitlab_pages_external_url"] = "https://pages.ex.com"
+    out = render(**ctx)
+    if pages_defined:
+        assert 'pages_external_url "https://pages.ex.com"' in out
+    else:
+        assert 'pages_external_url' not in out
 
 def test_ldap_block_with_extra_settings_appended_and_true_literal():
     ctx = _base_ctx()
