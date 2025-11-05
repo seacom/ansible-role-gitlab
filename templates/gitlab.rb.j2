@@ -1,7 +1,8 @@
 # Global Settings
-
-# The URL through which GitLab will be accessed.
 external_url "{{ gitlab_external_url }}"
+{% if gitlab_redirect_http_to_https is defined %}
+nginx['redirect_http_to_https'] = {{ gitlab_redirect_http_to_https | lower }}
+{% endif %}
 {% if gitlab_time_zone is defined %}
 gitlab_rails['time_zone'] = "{{ gitlab_time_zone }}"
 {% endif %}
@@ -9,40 +10,74 @@ gitlab_rails['time_zone'] = "{{ gitlab_time_zone }}"
 gitlab_rails['gitlab_default_theme'] = "{{ gitlab_default_theme }}"
 {% endif %}
 
+{% if gitlab_backup_path is defined or gitlab_backup_keep_time is defined  %}
 # Backup
+{% endif %}
 {% if gitlab_backup_path is defined %}
 gitlab_rails['backup_path'] = "{{ gitlab_backup_path }}"
 {% endif %}
 {% if gitlab_backup_keep_time is defined %}
 gitlab_rails['backup_keep_time'] = {{ gitlab_backup_keep_time }}
 {% endif %}
+{% if gitlab_backup_path is defined or gitlab_backup_keep_time is defined  %}
 
+{% endif %}
+{% if gitlab_email_enabled is defined and gitlab_email_enabled %}
 # Email
 gitlab_rails['gitlab_email_enabled'] = {{ gitlab_email_enabled | lower }}
-{% if gitlab_email_enabled %}
 gitlab_rails['gitlab_email_from'] = "{{ gitlab_email_from }}"
 gitlab_rails['gitlab_email_display_name'] = "{{ gitlab_email_display_name }}"
 gitlab_rails['gitlab_email_reply_to'] = "{{ gitlab_email_reply_to }}"
+{% if gitlab_smtp_enable is defined and gitlab_smtp_enable %}
+
+# Use smtp instead of sendmail/postfix
+# More details and example configuration at
+# https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/doc/settings/smtp.md
+gitlab_rails['smtp_enable'] = {{ gitlab_smtp_enable | lower }}
+gitlab_rails['smtp_address'] = '{{ gitlab_smtp_address }}'
+gitlab_rails['smtp_port'] = {{ gitlab_smtp_port }}
+{% if gitlab_smtp_user_name is defined %}
+gitlab_rails['smtp_user_name'] = '{{ gitlab_smtp_user_name }}'
+{% endif %}
+{% if gitlab_smtp_password is defined %}
+gitlab_rails['smtp_password'] = '{{ gitlab_smtp_password }}'
+{% endif %}
+gitlab_rails['smtp_domain'] = '{{ gitlab_smtp_domain }}'
+{% if gitlab_smtp_authentication is defined %}
+gitlab_rails['smtp_authentication'] = '{{ gitlab_smtp_authentication }}'
+{% endif %}
+gitlab_rails['smtp_enable_starttls_auto'] = {{ gitlab_smtp_enable_starttls_auto | lower }}
+gitlab_rails['smtp_tls'] = {{ gitlab_smtp_tls | lower }}
+{% if gitlab_smtp_openssl_verify_mode is defined %}
+gitlab_rails['smtp_openssl_verify_mode'] = '{{ gitlab_smtp_openssl_verify_mode }}'
+{% endif %}
+{% if gitlab_smtp_ca_path is defined %}
+gitlab_rails['smtp_ca_path'] = '{{ gitlab_smtp_ca_path }}'
+{% endif %}
+{% if gitlab_smtp_ca_file is defined %}
+gitlab_rails['smtp_ca_file'] = '{{ gitlab_smtp_ca_file }}'
+{% endif %}
 {% endif %}
 
-# SSL
-{% if gitlab_redirect_http_to_https is defined %}
-nginx['redirect_http_to_https'] = {{ gitlab_redirect_http_to_https | lower }}
 {% endif %}
 {% if gitlab_ssl_certificate is defined and gitlab_ssl_certificate_key is defined %}
+# SSL certificate 
 nginx['ssl_certificate'] = "{{ gitlab_ssl_certificate }}"
 nginx['ssl_certificate_key'] = "{{ gitlab_ssl_certificate_key }}"
+
 {% endif %}
-{% if gitlab_letsencrypt_enable is defined %}
+{% if gitlab_letsencrypt_enable is defined and gitlab_letsencrypt_enable %}
+# Let's Encrypt
 letsencrypt['enable'] = {{ gitlab_letsencrypt_enable | lower }}
 letsencrypt['contact_emails'] = {{ gitlab_letsencrypt_contact_emails | to_json }}
 letsencrypt['auto_renew_hour'] = "{{ gitlab_letsencrypt_auto_renew_hour }}"
 letsencrypt['auto_renew_minute'] = "{{ gitlab_letsencrypt_auto_renew_minute }}"
 letsencrypt['auto_renew_day_of_month'] = "{{ gitlab_letsencrypt_auto_renew_day_of_month }}"
 letsencrypt['auto_renew'] = {{ gitlab_letsencrypt_auto_renew | lower }}
-{% endif %}
 
-# The directory where Git repositories will be stored.
+{% endif %}
+{% if gitlab_git_data_dir is defined %}
+# Git storage
 {% if gitlab_version | regex_search('^[1-9]\.') or gitlab_version | regex_search('^1[0-6]\.') or gitlab_version | regex_search('^17\.[0-9]\.') %}
 git_data_dirs({"default" => {"path" => "{{ gitlab_git_data_dir }}"} })
 {% else %}
@@ -56,12 +91,12 @@ gitaly['configuration'] = {
 }
 {% endif %}
 
-# The directory where Gitlab backups will be stored
-
+{% endif %}
+{% if gitlab_ldap_enabled is defined and gitlab_ldap_enabled %}
+# LDAP 
 # For LDAP settings, with the multi-server support, for a single server, the template has been migrated and the same variables can be used.
 # For multiple server is suggested that extrasettings array approach is used
 # https://docs.gitlab.com/administration/auth/ldap/?tab=Linux+package+(Omnibus)#configure-ldap
-{% if gitlab_ldap_enabled %}
 gitlab_rails['ldap_enabled'] = {{ gitlab_ldap_enabled | lower }}
 gitlab_rails['ldap_servers'] = {
   'main' => {
@@ -81,60 +116,39 @@ gitlab_rails['ldap_servers'] = {
     'allow_username_or_email_login' => true
   }
 }
+
+{% endif %}
+{% if gitlab_registry_enable is defined and gitlab_registry_enable %}
+# GitLab registry.
+registry['enable'] = {{ gitlab_registry_enable | lower }}
+registry_external_url "{{ gitlab_registry_external_url }}"
+{% if gitlab_registry_nginx_ssl_certificate is defined and gitlab_registry_nginx_ssl_certificate_key is defined%}
+registry_nginx['ssl_certificate'] = "{{ gitlab_registry_nginx_ssl_certificate }}"
+registry_nginx['ssl_certificate_key'] = "{{ gitlab_registry_nginx_ssl_certificate_key }}"
 {% endif %}
 
-# GitLab Nginx
-## See https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/doc/settings/nginx.md
+{% endif %}
+{% if pages_external_url is defined %}
+# GitLab Pages
+pages_external_url "{{ gitlab_pages_external_url }}"
+
+{% endif %}
+# Other configurations
+# To change other settings, see:
+# https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/README.md#changing-gitlab-yml-settings
 {% if gitlab_nginx_listen_port is defined %}
 nginx['listen_port'] = "{{ gitlab_nginx_listen_port }}"
 {% endif %}
 {% if gitlab_nginx_listen_https is defined %}
 nginx['listen_https'] = {{ gitlab_nginx_listen_https | lower }}
 {% endif %}
-
-# Use smtp instead of sendmail/postfix
-# More details and example configuration at
-# https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/doc/settings/smtp.md
-gitlab_rails['smtp_enable'] = {{ gitlab_smtp_enable | lower }}
-{% if gitlab_smtp_enable %}
-gitlab_rails['smtp_address'] = '{{ gitlab_smtp_address }}'
-gitlab_rails['smtp_port'] = {{ gitlab_smtp_port }}
-{% if gitlab_smtp_user_name %}
-gitlab_rails['smtp_user_name'] = '{{ gitlab_smtp_user_name }}'
-{% endif %}
-{% if gitlab_smtp_password %}
-gitlab_rails['smtp_password'] = '{{ gitlab_smtp_password }}'
-{% endif %}
-gitlab_rails['smtp_domain'] = '{{ gitlab_smtp_domain }}'
-{% if gitlab_smtp_authentication %}
-gitlab_rails['smtp_authentication'] = '{{ gitlab_smtp_authentication }}'
-{% endif %}
-gitlab_rails['smtp_enable_starttls_auto'] = {{ gitlab_smtp_enable_starttls_auto | lower }}
-gitlab_rails['smtp_tls'] = {{ gitlab_smtp_tls | lower }}
-gitlab_rails['smtp_openssl_verify_mode'] = '{{ gitlab_smtp_openssl_verify_mode }}'
-gitlab_rails['smtp_ca_path'] = '{{ gitlab_smtp_ca_path }}'
-gitlab_rails['smtp_ca_file'] = '{{ gitlab_smtp_ca_file }}'
-{% endif %}
-
 {% if gitlab_nginx_ssl_verify_client is defined %}
 nginx['ssl_verify_client'] = "{{ gitlab_nginx_ssl_verify_client }}"
 {% endif %}
 {% if gitlab_nginx_ssl_client_certificate is defined %}
 nginx['ssl_client_certificate'] = "{{ gitlab_nginx_ssl_client_certificate }}"
 {% endif %}
-
-# GitLab registry.
-registry['enable'] = {{ gitlab_registry_enable | lower }}
-{% if gitlab_registry_enable %}
-registry_external_url "{{ gitlab_registry_external_url }}"
-registry_nginx['ssl_certificate'] = "{{ gitlab_registry_nginx_ssl_certificate }}"
-registry_nginx['ssl_certificate_key'] = "{{ gitlab_registry_nginx_ssl_certificate_key }}"
-{% endif %}
-
-pages_external_url "{{ gitlab_pages_external_url }}"
-
 {% if gitlab_extra_settings is defined %}
-# Extra configuration
 {% for extra in gitlab_extra_settings %}
 {% for setting in extra %}
 {% for kv in extra[setting] %}
@@ -145,9 +159,5 @@ pages_external_url "{{ gitlab_pages_external_url }}"
 {% endif %}
 {% endfor %}
 {% endfor %}
-
 {% endfor %}
 {% endif %}
-
-# To change other settings, see:
-# https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/README.md#changing-gitlab-yml-settings
