@@ -1,5 +1,17 @@
 {
+  "name": "ansible-role-gitlab",
+  "private": true,
   "devDependencies": {
     "semantic-release": "^25.0.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seacom/ansible-role-gitlab.git"
+  },
+  "licenses" : [
+    {
+      "type": "MIT",
+      "url": "https://www.opensource.org/licenses/mit-license.php"
+    }
+  ]
 }
