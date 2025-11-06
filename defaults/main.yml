@@ -19,3 +19,6 @@ gitlab_dependencies:
 
 # Optional settings.
 gitlab_download_validate_certs: true
+
+# Don't create self signed certificates by design
+gitlab_create_self_signed_cert: false
