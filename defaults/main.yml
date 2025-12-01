@@ -6,6 +6,14 @@ gitlab_edition: "gitlab-ce"
 gitlab_version: ''
 gitlab_config_template: "gitlab.rb.j2"
 
+# SSL
+gitlab_letsencrypt_enable: false
+gitlab_letsencrypt_contact_emails: ["gitlab@example.com"]
+gitlab_letsencrypt_auto_renew_hour: 1
+gitlab_letsencrypt_auto_renew_minute: 30
+gitlab_letsencrypt_auto_renew_day_of_month: "*/7"
+gitlab_letsencrypt_auto_renew: true
+
 # Probably best to leave this as the default, unless doing testing.
 gitlab_restart_handler_failed_when: 'gitlab_restart.rc != 0'
 
