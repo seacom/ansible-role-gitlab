@@ -126,6 +126,26 @@ def test_time_zone_block_guards(tz_defined):
         assert "gitlab_rails['time_zone']" not in out
 
 @pytest.mark.parametrize(
+    "lets_encrypt_defined",
+    [
+        (True),
+        (False),
+    ],
+)
+def test_lets_encrypt_block(lets_encrypt_defined):
+    ctx = _base_ctx()
+    if lets_encrypt_defined:
+        ctx["gitlab_letsencrypt_enable"] = True
+        ctx["gitlab_letsencrypt_contact_emails"] = ["prova@example.com"]
+    out = render(**ctx)
+    if lets_encrypt_defined:
+        assert "letsencrypt['enable'] = true" in out
+        assert "letsencrypt['contact_emails'] = [\"prova@example.com\"]" in out
+    else:
+        assert "letsencrypt['enable'] = false" in out
+        assert "letsencrypt['contact_emails']" not in out
+
+@pytest.mark.parametrize(
     "theme_expected",
     [
         (True),

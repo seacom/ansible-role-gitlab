@@ -69,16 +69,16 @@ nginx['ssl_certificate'] = "{{ gitlab_ssl_certificate }}"
 nginx['ssl_certificate_key'] = "{{ gitlab_ssl_certificate_key }}"
 
 {% endif %}
-{% if gitlab_letsencrypt_enable is defined and gitlab_letsencrypt_enable %}
 # Let's Encrypt
 letsencrypt['enable'] = {{ gitlab_letsencrypt_enable | lower }}
+{% if gitlab_letsencrypt_enable is defined and gitlab_letsencrypt_enable %}
 letsencrypt['contact_emails'] = {{ gitlab_letsencrypt_contact_emails | to_json }}
 letsencrypt['auto_renew_hour'] = "{{ gitlab_letsencrypt_auto_renew_hour }}"
 letsencrypt['auto_renew_minute'] = "{{ gitlab_letsencrypt_auto_renew_minute }}"
 letsencrypt['auto_renew_day_of_month'] = "{{ gitlab_letsencrypt_auto_renew_day_of_month }}"
 letsencrypt['auto_renew'] = {{ gitlab_letsencrypt_auto_renew | lower }}
-
 {% endif %}
+
 {% if gitlab_git_data_dir is defined %}
 # Git storage
 {% if gitlab_version | regex_search('^[1-9]\.') or gitlab_version | regex_search('^1[0-6]\.') or gitlab_version | regex_search('^17\.[0-9]\.') %}
